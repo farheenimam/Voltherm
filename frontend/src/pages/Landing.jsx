@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
 import Hero from '../components/Hero.jsx';
 import TrustBar from '../components/TrustBar.jsx';
+import siteRiskBefore from '../assets/images/site-risk-before.jpg';
+import siteMitigatedAfter from '../assets/images/site-mitigated-after.jpg';
 
 export default function Landing() {
   return (
@@ -26,7 +28,12 @@ export default function Landing() {
         </div>
         <div
           className="panel"
-          style={{ height: 280, background: 'radial-gradient(circle at 30% 30%, rgba(57,217,122,.1), transparent 60%)' }}
+          style={{
+            height: 280,
+            backgroundImage: `url(${siteRiskBefore})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+          }}
           aria-hidden="true"
         />
       </section>
@@ -34,7 +41,13 @@ export default function Landing() {
       <section id="solutions" className="container" style={{ padding: '0 24px 88px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, alignItems: 'center' }}>
         <div
           className="panel"
-          style={{ height: 240, background: 'radial-gradient(circle at 70% 40%, rgba(59,167,224,.12), transparent 60%)', order: 1 }}
+          style={{
+            height: 240,
+            backgroundImage: `url(${siteMitigatedAfter})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            order: 1,
+          }}
           aria-hidden="true"
         />
         <div>

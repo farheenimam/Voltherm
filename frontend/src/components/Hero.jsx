@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import heroImage from '../assets/images/hero-charging-station.jpg';
 
 export default function Hero() {
   return (
@@ -103,8 +104,9 @@ export default function Hero() {
             height: 340,
             borderRadius: 'var(--radius-lg)',
             border: '1px solid var(--line)',
-            background:
-              'radial-gradient(circle at 40% 30%, rgba(57,217,122,.12), transparent 55%), radial-gradient(circle at 70% 70%, rgba(59,167,224,.12), transparent 55%), var(--bg-2)',
+            backgroundImage: `url(${heroImage})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
           }}
         />
       </div>
