@@ -1,60 +1,83 @@
-/**
- * manager — orchestrates the full agent pipeline for a single site.
- *
- * Flow:
- *   1. heatAgent + shadeAgent run in parallel (both only need raw site data)
- *   2. financialAgent runs once heat/shade are available (uses them as context)
- *   3. calculateTSS() combines all three into a deterministic score (lib/tssFormula.js)
- *   4. critiqueAgent reviews everything and writes the final narrative
- *
- * This orchestration logic itself is real; only the individual agent
- * bodies are dummy implementations (see agents/*Agent.js).
- */
+const { runHeatAgent } = require("./heatAgent");
+const { runShadeAgent } = require("./shadeAgent");
+const { runFinancialAgent } = require("./financialAgent");
+const { coherenceCheck } = require("../lib/validators");
+const { computeTSS } = require("../lib/tssFormula");
+const groq = require("../services/groqClient");
 
-import { sliceForAgent } from '../lib/validators.js';
-import { calculateTSS } from '../lib/tssFormula.js';
-import { runHeatAgent } from './heatAgent.js';
-import { runShadeAgent } from './shadeAgent.js';
-import { runFinancialAgent } from './financialAgent.js';
-import { runCritiqueAgent } from './critiqueAgent.js';
+// Job 4: draft recommendation (only LLM call in the manager)
+async function generateRecommendation({ tssResult, heat, shade, financial, coherenceNotes, revisionContext }) {
+  const system = `You are Voltherm's site engineer. Given validated EV-charging-site heat/shade/financial data, write a short plain-English recommendation and an ROI estimate.
+Rules:
+- Only use numbers that appear in the provided data. Never invent a figure.
+- Address the dominant risk driver: if canopy_pct < 30, you MUST talk about shade/canopy. If wet_bulb_c is high (>26C), you MUST address cooling load.
+- Return strict JSON: { "recommendation": string, "roi_text": string }.`;
 
-/**
- * @param {object} site - full, validated site payload from the request body
- * @param {(step: string, status: 'running'|'done') => void} [onProgress] - optional callback
- *        fired as each agent starts/finishes, so a route can stream progress
- *        (e.g. via SSE) to the AgentStatusLoader UI.
- * @returns {Promise<object>} the full screening result, ready to persist + return
- */
-export async function screenSite(site, onProgress = () => {}) {
-  onProgress('heat', 'running');
-  onProgress('shade', 'running');
+  const user = JSON.stringify({
+    tss_score: tssResult.tss_score,
+    risk_level: tssResult.risk_level,
+    heat,
+    shade,
+    financial,
+    coherence_notes: coherenceNotes,
+    revision_context: revisionContext || null,
+  });
 
-  const [heatResult, shadeResult] = await Promise.all([
-    runHeatAgent(sliceForAgent('heat', site)),
-    runShadeAgent(sliceForAgent('shade', site)),
+  return groq.chat({ system, user, jsonMode: true, timeoutMs: 6000 });
+}
+
+async function runManager({ lat, lng }) {
+  // Step 2: dispatch three employee agents in parallel
+  const [heatResult, shadeResult, financialResult] = await Promise.all([
+    runHeatAgent({ lat, lng }),
+    runShadeAgent({ lat, lng }),
+    runFinancialAgent({ lat, lng }),
   ]);
 
-  onProgress('heat', 'done');
-  onProgress('shade', 'done');
+  const partial =
+    heatResult.unavailable || shadeResult.unavailable || financialResult.unavailable;
 
-  onProgress('financial', 'running');
-  const financialResult = await runFinancialAgent(sliceForAgent('financial', site), { heatResult, shadeResult });
-  onProgress('financial', 'done');
+  // Job 2: coherence check (non-blocking, just notes)
+  const coherenceNotes = coherenceCheck({
+    heat: heatResult.data,
+    shade: shadeResult.data,
+    financial: financialResult.data,
+  });
+  if (shadeResult.flags?.length) coherenceNotes.push(...shadeResult.flags);
 
-  const tss = calculateTSS(heatResult, shadeResult, financialResult);
+  // Job 3: deterministic TSS
+  const tssResult = computeTSS({
+    heat: heatResult.data,
+    shade: shadeResult.data,
+    financial: financialResult.data,
+  });
 
-  onProgress('critique', 'running');
-  const critiqueResult = await runCritiqueAgent({ heatResult, shadeResult, financialResult, tss });
-  onProgress('critique', 'done');
+  // Job 4: LLM recommendation
+  let llmOutput;
+  let recommendationUnavailable = false;
+  try {
+    llmOutput = await generateRecommendation({
+      tssResult,
+      heat: heatResult.data,
+      shade: shadeResult.data,
+      financial: financialResult.data,
+      coherenceNotes,
+    });
+  } catch (e) {
+    llmOutput = { recommendation: null, roi_text: null };
+    recommendationUnavailable = true;
+  }
 
   return {
-    tss,
+    tssResult,
     heatResult,
     shadeResult,
     financialResult,
-    critiqueResult,
-    screenedAt: new Date().toISOString(),
+    coherenceNotes,
+    partial,
+    llmOutput,
+    recommendationUnavailable,
   };
 }
 
-export default { screenSite };
+module.exports = { runManager, generateRecommendation };

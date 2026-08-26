@@ -1,32 +1,17 @@
-import 'dotenv/config';
-import express from 'express';
-import cors from 'cors';
-import morgan from 'morgan';
-
-import screenSiteRouter from './routes/screenSite.js';
-import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+const screenSiteRoute = require("./routes/screenSite");
+const errorHandler = require("./middleware/errorHandler");
 
 const app = express();
-const PORT = process.env.PORT || 4000;
-const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:5173';
+app.use(cors());
+app.use(express.json());
 
-app.use(cors({ origin: CORS_ORIGIN }));
-app.use(express.json({ limit: '1mb' }));
-app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+app.get("/api/health", (req, res) => res.json({ ok: true }));
+app.use("/api", screenSiteRoute);
 
-app.get('/api/health', (req, res) => {
-  res.json({ ok: true, service: 'voltherm-backend', time: new Date().toISOString() });
-});
-
-app.use('/api/screen-site', screenSiteRouter);
-
-// 404 + error handling must be registered last
-app.use(notFoundHandler);
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-  // eslint-disable-next-line no-console
-  console.log(`⚡ Voltherm API listening on http://localhost:${PORT}`);
-});
-
-export default app;
+const PORT = process.env.PORT || 4000;
+app.listen(PORT, () => console.log(`Voltherm backend listening on :${PORT}`));

@@ -1,122 +1,159 @@
-/**
- * fortyguardClient — thin wrapper around the FortyGuard Heat Intelligence API.
- *
- * DUMMY IMPLEMENTATION. Every method below returns realistic mock data after
- * a short simulated delay instead of making a real HTTP call. Swap the body
- * of each method for a real `fetch`/`axios` call to FORTYGUARD_BASE_URL,
- * authenticated with FORTYGUARD_API_KEY — the request/response shapes are
- * already the contract the rest of the app (agents/*) is written against.
- *
- * This file is the ONLY place in the codebase that should hold or reference
- * FORTYGUARD_API_KEY. Never import this on the frontend.
- */
+const cache = require("./cache");
+const mockData = require("../lib/mockData");
 
-const FORTYGUARD_BASE_URL = process.env.FORTYGUARD_BASE_URL || 'https://api.fortyguard.com/v1';
-const FORTYGUARD_API_KEY = process.env.FORTYGUARD_API_KEY;
+const BASE_URL = process.env.FORTYGUARD_BASE_URL || "https://api.fortyguard.com/v1";
 
-function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+// Each employee agent gets its own key. Falls back to the shared key if a
+// per-agent one isn't set, so a single-key setup still works.
+const KEYS = {
+  heat: process.env.FORTYGUARD_API_KEY_HEAT || process.env.FORTYGUARD_API_KEY,
+  shade: process.env.FORTYGUARD_API_KEY_SHADE || process.env.FORTYGUARD_API_KEY,
+  financial: process.env.FORTYGUARD_API_KEY_FINANCIAL || process.env.FORTYGUARD_API_KEY,
+};
 
-/**
- * Shared low-level request helper.
- * TODO(fortyguard): replace with a real fetch() once wiring up the live API:
- *
- *   const res = await fetch(`${FORTYGUARD_BASE_URL}${path}`, {
- *     method,
- *     headers: {
- *       'Authorization': `Bearer ${FORTYGUARD_API_KEY}`,
- *       'Content-Type': 'application/json',
- *     },
- *     body: body ? JSON.stringify(body) : undefined,
- *   });
- *   if (!res.ok) throw new Error(`FortyGuard ${path} failed: ${res.status}`);
- *   return res.json();
- */
-async function request(path, { method = 'GET', body } = {}) {
-  if (!FORTYGUARD_API_KEY) {
-    // eslint-disable-next-line no-console
-    console.warn('[fortyguardClient] FORTYGUARD_API_KEY is not set — returning dummy data only.');
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1h — "frequently asked" sites hit this
+const STALE_MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24h — last-resort cached fallback
+
+async function callWithTimeout(url, options, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    if (!res.ok) throw new Error(`FortyGuard ${res.status}: ${await res.text()}`);
+    return await res.json();
+  } finally {
+    clearTimeout(timer);
   }
-  await delay(250 + Math.random() * 250);
-  return { __dummy: true, path, method, body };
 }
 
-/** 1. Surface temperature for a lat/lng, optionally over a date range. */
-export async function getSurfaceTemperature({ latitude, longitude, date } = {}) {
-  await request('/surface-temperature', { method: 'POST', body: { latitude, longitude, date } });
+/**
+ * Generic fetch-with-cache-retry-mock wrapper used by every employee agent.
+ *
+ * @param {string} agentName  "heat" | "shade" | "financial"
+ * @param {string} cacheKey   cache.keyFor(...) result
+ * @param {Function} fetchFn  async () => rawApiResponse
+ * @param {number} timeoutMs
+ * @param {Object} mockFallback  static object to use if everything fails
+ */
+async function fetchWithResilience({ agentName, cacheKey, fetchFn, timeoutMs, mockFallback }) {
+  // 1. cache hit — fast path for frequently-requested sites
+  const cached = cache.get(cacheKey);
+  if (cached) {
+    return { data: cached, source: "cache", confidence: "high" };
+  }
+
+  // 2. live call, with one retry (2s backoff)
+  try {
+    const data = await callWithTimeout(fetchFn.url, fetchFn.options, timeoutMs);
+    cache.set(cacheKey, data, CACHE_TTL_MS);
+    return { data, source: "live", confidence: "high" };
+  } catch (firstErr) {
+    await new Promise((r) => setTimeout(r, 2000));
+    try {
+      const data = await callWithTimeout(fetchFn.url, fetchFn.options, timeoutMs);
+      cache.set(cacheKey, data, CACHE_TTL_MS);
+      return { data, source: "live-retry", confidence: "high" };
+    } catch (secondErr) {
+      // 3. stale cache (<24h old) for this exact site
+      const stale = cache.getStale(cacheKey, STALE_MAX_AGE_MS);
+      if (stale) {
+        return { data: stale, source: "stale-cache", confidence: "medium" };
+      }
+      // 4. static mock — keeps the pipeline demo-able without live FortyGuard access
+      return { data: mockFallback, source: "mock", confidence: "low" };
+    }
+  }
+}
+
+function authHeaders(agentName) {
   return {
-    latitude,
-    longitude,
-    date: date || new Date().toISOString().slice(0, 10),
-    surfaceTempF: 148,
-    ambientTempF: 96,
-    surfaceTempDeltaF: 52,
-    source: 'dummy:fortyguard.surface-temperature',
+    Authorization: `Bearer ${KEYS[agentName]}`,
+    "Content-Type": "application/json",
   };
 }
 
-/** 2. Shade / canopy coverage analysis for a site polygon or point + radius. */
-export async function getShadeCoverage({ latitude, longitude, radiusMeters = 50 } = {}) {
-  await request('/shade-coverage', { method: 'POST', body: { latitude, longitude, radiusMeters } });
-  return {
-    latitude,
-    longitude,
-    radiusMeters,
-    shadeCoveragePct: 8,
-    treeCoveragePct: 3,
-    structureShadePct: 5,
-    source: 'dummy:fortyguard.shade-coverage',
-  };
+// ---- Heat agent: create_heatmap ----
+async function createHeatmap({ lat, lng, thresholdC = 35 }) {
+  const cacheKey = cache.keyFor("heat", lat, lng, thresholdC);
+  return fetchWithResilience({
+    agentName: "heat",
+    cacheKey,
+    timeoutMs: 8000,
+    mockFallback: mockData.heat,
+    fetchFn: {
+      url: `${BASE_URL}/create_heatmap`,
+      options: {
+        method: "POST",
+        headers: authHeaders("heat"),
+        body: JSON.stringify({ lat, lng, threshold_c: thresholdC }),
+      },
+    },
+  });
 }
 
-/** 3. Seasonal thermal forecast — projected derating windows across the year. */
-export async function getSeasonalForecast({ latitude, longitude } = {}) {
-  await request('/seasonal-forecast', { method: 'POST', body: { latitude, longitude } });
-  return {
-    latitude,
-    longitude,
-    months: [
-      { month: 'Jun', projectedDeratingHours: 62 },
-      { month: 'Jul', projectedDeratingHours: 94 },
-      { month: 'Aug', projectedDeratingHours: 88 },
-      { month: 'Sep', projectedDeratingHours: 41 },
-    ],
-    totalAnnualDeratingHours: 285,
-    source: 'dummy:fortyguard.seasonal-forecast',
-  };
+// ---- Shade agent: satellite_segmentation + street_view_segmentation ----
+async function satelliteSegmentation({ lat, lng }) {
+  const cacheKey = cache.keyFor("shade-sat", lat, lng);
+  return fetchWithResilience({
+    agentName: "shade",
+    cacheKey,
+    timeoutMs: 5000,
+    mockFallback: {
+      canopy_pct: mockData.shade.canopy_pct,
+      pavement_pct: mockData.shade.pavement_pct,
+      building_pct: mockData.shade.building_pct,
+    },
+    fetchFn: {
+      url: `${BASE_URL}/satellite_segmentation`,
+      options: {
+        method: "POST",
+        headers: authHeaders("shade"),
+        body: JSON.stringify({ lat, lng }),
+      },
+    },
+  });
 }
 
-/** 4. Site comparison — benchmark a site against nearby/similar screened sites. */
-export async function compareSites({ latitude, longitude, radiusMiles = 25 } = {}) {
-  await request('/site-comparison', { method: 'POST', body: { latitude, longitude, radiusMiles } });
-  return {
-    latitude,
-    longitude,
-    radiusMiles,
-    comparableSiteCount: 6,
-    percentileRank: 34,
-    source: 'dummy:fortyguard.site-comparison',
-  };
+async function streetViewSegmentation({ lat, lng }) {
+  const cacheKey = cache.keyFor("shade-street", lat, lng);
+  return fetchWithResilience({
+    agentName: "shade",
+    cacheKey,
+    timeoutMs: 5000,
+    mockFallback: { ground_level_shade_pct: mockData.shade.ground_level_shade_pct },
+    fetchFn: {
+      url: `${BASE_URL}/street_view_segmentation`,
+      options: {
+        method: "POST",
+        headers: authHeaders("shade"),
+        body: JSON.stringify({ lat, lng }),
+      },
+    },
+  });
 }
 
-/** 5. Heat intelligence report — the underlying data used for PDF export. */
-export async function getHeatIntelligenceReport({ siteId, latitude, longitude } = {}) {
-  await request('/heat-intelligence-report', { method: 'POST', body: { siteId, latitude, longitude } });
-  return {
-    siteId,
-    latitude,
-    longitude,
-    generatedAt: new Date().toISOString(),
-    sections: ['surface-temperature', 'shade-coverage', 'seasonal-forecast', 'site-comparison'],
-    source: 'dummy:fortyguard.heat-intelligence-report',
-  };
+// ---- Financial agent: environmental_parameters ----
+async function environmentalParameters({ lat, lng }) {
+  const cacheKey = cache.keyFor("financial", lat, lng);
+  return fetchWithResilience({
+    agentName: "financial",
+    cacheKey,
+    timeoutMs: 6000,
+    mockFallback: mockData.financial,
+    fetchFn: {
+      url: `${BASE_URL}/environmental_parameters`,
+      options: {
+        method: "POST",
+        headers: authHeaders("financial"),
+        body: JSON.stringify({ lat, lng }),
+      },
+    },
+  });
 }
 
-export default {
-  getSurfaceTemperature,
-  getShadeCoverage,
-  getSeasonalForecast,
-  compareSites,
-  getHeatIntelligenceReport,
+module.exports = {
+  createHeatmap,
+  satelliteSegmentation,
+  streetViewSegmentation,
+  environmentalParameters,
 };

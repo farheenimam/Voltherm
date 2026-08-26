@@ -1,78 +1,55 @@
-/**
- * Deterministic Thermal Site Score (TSS) calculation — spec §2.
- *
- * This is the one piece of scoring math in the pipeline that is NOT an LLM
- * call: given the structured outputs of the heat, shade, and financial
- * agents, it produces a single 0–100 score plus a letter-graded band, so the
- * same inputs always produce the same score (auditable for NEVI /
- * procurement purposes).
- *
- * Weighting (sums to 1.0):
- *   - Heat exposure risk     45%   (surface temp delta, canopy coverage)
- *   - Shade adequacy         30%   (tree + structure shade coverage)
- *   - Financial exposure     25%   (derating hours -> revenue at risk)
- *
- * Each sub-score is normalized to 0–100 where 100 = best (lowest risk)
- * before weighting, so a higher TSS is always better.
- */
+// Deterministic, no LLM. Each penalty is normalized 0-100, then weighted.
+// Curves are first-pass estimates — tune against real FortyGuard data later.
 
-export const TSS_WEIGHTS = Object.freeze({
-  heat: 0.45,
-  shade: 0.3,
-  financial: 0.25,
-});
-
-export const TSS_BANDS = Object.freeze([
-  { min: 90, label: 'Excellent', color: '#39D97A' },
-  { min: 75, label: 'Good', color: '#39D97A' },
-  { min: 60, label: 'Flagged', color: '#F2B84B' },
-  { min: 40, label: 'At Risk', color: '#F2B84B' },
-  { min: 0, label: 'High Risk', color: '#E5484D' },
-]);
-
-function clamp(value, min = 0, max = 100) {
-  return Math.min(max, Math.max(min, value));
+function clamp(n, min, max) {
+  return Math.max(min, Math.min(max, n));
 }
 
-/**
- * @param {object} heatResult - output of heatAgent, expects `surfaceTempDeltaF` and `canopyCoveragePct`
- * @param {object} shadeResult - output of shadeAgent, expects `shadeCoveragePct`
- * @param {object} financialResult - output of financialAgent, expects `annualDeratingHours`, `estimatedChargerCount`
- * @returns {{ score: number, band: object, breakdown: object }}
- */
-export function calculateTSS(heatResult = {}, shadeResult = {}, financialResult = {}) {
-  // --- Heat sub-score: worse surface temp delta and lower canopy = higher risk ---
-  const surfaceTempDeltaF = heatResult.surfaceTempDeltaF ?? 35; // default: hot asphalt scenario
-  const canopyCoveragePct = heatResult.canopyCoveragePct ?? 0;
-  // 0°F delta -> 100, 60°F+ delta -> 0, canopy coverage offsets up to 20 pts
-  const heatSubscore = clamp(100 - (surfaceTempDeltaF / 60) * 100 + canopyCoveragePct * 0.2);
+function heatPenalty(heat) {
+  // 0 exceedance hours -> 0 penalty. 12+ hours/day over threshold -> 100 penalty.
+  const hoursPenalty = clamp((heat.exceedance_hours_per_day / 12) * 70, 0, 70);
+  // long unbroken hot stretches are worse than the same hours spread out
+  const persistencePenalty = clamp((heat.persistence_max_hours / 6) * 30, 0, 30);
+  return clamp(hoursPenalty + persistencePenalty, 0, 100);
+}
 
-  // --- Shade sub-score: direct mapping from % coverage, with diminishing returns after 60% ---
-  const shadeCoveragePct = shadeResult.shadeCoveragePct ?? 0;
-  const shadeSubscore = clamp(shadeCoveragePct >= 60 ? 90 + (shadeCoveragePct - 60) * 0.25 : shadeCoveragePct * 1.5);
+function shadePenalty(shade) {
+  // low canopy + low ground shade = high penalty
+  const canopyPenalty = clamp((1 - shade.canopy_pct / 100) * 60, 0, 60);
+  const groundShadePenalty = clamp((1 - shade.ground_level_shade_pct / 100) * 40, 0, 40);
+  return clamp(canopyPenalty + groundShadePenalty, 0, 100);
+}
 
-  // --- Financial sub-score: derating hours per charger per year, weighted against uptime target ---
-  const annualDeratingHours = financialResult.annualDeratingHours ?? 0;
-  const chargerCount = financialResult.estimatedChargerCount || 1;
-  const deratingHoursPerCharger = annualDeratingHours / chargerCount;
-  // 0 hrs -> 100, 500+ hrs/charger/yr -> 0
-  const financialSubscore = clamp(100 - (deratingHoursPerCharger / 500) * 100);
+function environmentalPenalty(env) {
+  // wet-bulb is the dominant driver of real-world heat stress
+  const wetBulbPenalty = clamp((env.wet_bulb_c / 35) * 60, 0, 60);
+  const ghiPenalty = clamp((env.ghi_w_m2 / 1200) * 40, 0, 40);
+  return clamp(wetBulbPenalty + ghiPenalty, 0, 100);
+}
 
-  const weighted =
-    heatSubscore * TSS_WEIGHTS.heat +
-    shadeSubscore * TSS_WEIGHTS.shade +
-    financialSubscore * TSS_WEIGHTS.financial;
+function computeTSS({ heat, shade, financial }) {
+  const hp = heatPenalty(heat);
+  const sp = shadePenalty(shade);
+  const ep = environmentalPenalty(financial);
 
-  const score = Math.round(clamp(weighted));
-  const band = TSS_BANDS.find((b) => score >= b.min) || TSS_BANDS[TSS_BANDS.length - 1];
+  const tss = clamp(100 - hp * 0.4 - sp * 0.35 - ep * 0.25, 0, 100);
+
+  let riskLevel = "Low";
+  if (tss < 40) riskLevel = "High";
+  else if (tss < 70) riskLevel = "Moderate";
 
   return {
-    score,
-    band,
+    tss_score: Math.round(tss * 10) / 10,
+    risk_level: riskLevel,
     breakdown: {
-      heat: { subscore: Math.round(heatSubscore), weight: TSS_WEIGHTS.heat },
-      shade: { subscore: Math.round(shadeSubscore), weight: TSS_WEIGHTS.shade },
-      financial: { subscore: Math.round(financialSubscore), weight: TSS_WEIGHTS.financial },
+      heat_penalty: Math.round(hp * 10) / 10,
+      shade_penalty: Math.round(sp * 10) / 10,
+      environmental_penalty: Math.round(ep * 10) / 10,
+      exceedance_hours: heat.exceedance_hours_per_day,
+      shade_pct: shade.ground_level_shade_pct,
+      wet_bulb_c: financial.wet_bulb_c,
     },
   };
 }
+
+module.exports = { computeTSS, heatPenalty, shadePenalty, environmentalPenalty };
