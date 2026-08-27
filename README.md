@@ -29,13 +29,8 @@ cp .env.example frontend/.env     # only VITE_API_BASE_URL is used here
 
 # 2. backend
 cd backend
-python -m venv venv
-# Windows:
-.\venv\Scripts\activate
-# Mac/Linux:
-source venv/bin/activate
-pip install -r requirements.txt
-python main.py     # starts on http://localhost:4000
+npm install
+npm run dev          # starts Express on http://localhost:4000
 
 # 3. frontend (new terminal)
 cd frontend
