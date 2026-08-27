@@ -1,4 +1,5 @@
 const { computeTSS } = require("../lib/tssFormula");
+const { llmFallback } = require("../lib/mockData");
 const groq = require("../services/groqClient");
 
 const REQUIRED_FIELDS = ["tss_score", "risk_level", "breakdown", "recommendation", "roi_text"];
@@ -31,7 +32,7 @@ Return: { "grounded": boolean, "relevant": boolean, "reason": string, "failed_ch
     tss_score: tssResult.tss_score,
   });
 
-  return groq.chat({ system, user, jsonMode: true, timeoutMs: 5000 });
+  return groq.chat({ system, user, jsonMode: true, timeoutMs: 10000 });
 }
 
 async function runCritiqueAgent({ managerOutput }) {
@@ -98,8 +99,8 @@ function buildDegradedResponse(managerOutput) {
     tss_score: tssResult.tss_score,
     risk_level: tssResult.risk_level,
     breakdown: tssResult.breakdown,
-    recommendation: null,
-    roi_text: null,
+    recommendation: llmFallback.recommendation,
+    roi_text: llmFallback.roi_text,
     recommendation_unavailable: true,
     partial_data: partial,
   };

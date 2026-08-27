@@ -1,65 +1,63 @@
 const express = require("express");
 const router = express.Router();
-const { runManager, generateRecommendation } = require("../agents/manager");
-const { runCritiqueAgent, buildDegradedResponse } = require("../agents/critiqueAgent");
+const { runSitePipeline } = require("../agents/pipeline");
+const { runReportAgent } = require("../agents/reportAgent");
 
+const MAX_SITES = 4;
+
+// ---- Single site (unchanged behavior, now backed by shared pipeline.js) ----
 router.post("/screen-site", async (req, res, next) => {
-  const startedAt = Date.now();
   try {
-    const { lat, lng, address } = req.body;
+    const { lat, lng, address, polygon_aoi: polygonAoi } = req.body;
     if (typeof lat !== "number" || typeof lng !== "number") {
       return res.status(400).json({ error: "lat and lng (numbers) are required" });
     }
+    const result = await runSitePipeline({ lat, lng, address, polygonAoi });
+    const { location, ...rest } = result; // keep single-site response shape unchanged
+    return res.json(rest);
+  } catch (err) {
+    next(err);
+  }
+});
 
-    // Steps 2-5: dispatch, validate, TSS calc, draft recommendation
-    const managerOutput = await runManager({ lat, lng });
+// ---- Multi-site (new): array in, ranked report out ----
+router.post("/screen-sites", async (req, res, next) => {
+  try {
+    const { lats, lngs, addresses, count } = req.body;
 
-    // Step 6: critique
-    let critique = await runCritiqueAgent({ managerOutput });
-
-    // Bounded revision loop: max 1 retry of Job 4 only, with failure reason in context
-    if (critique.verdict === "REVISE") {
-      const revised = await generateRecommendation({
-        tssResult: managerOutput.tssResult,
-        heat: managerOutput.heatResult.data,
-        shade: managerOutput.shadeResult.data,
-        financial: managerOutput.financialResult.data,
-        coherenceNotes: managerOutput.coherenceNotes,
-        revisionContext: `Previous attempt failed checks: ${critique.failed_checks.join(", ")}. Reason: ${JSON.stringify(critique.detail?.semanticCheck?.reason || "")}`,
-      });
-      managerOutput.llmOutput = revised;
-      critique = await runCritiqueAgent({ managerOutput });
-
-      // second failure -> graceful degradation, no AI text
-      if (critique.verdict !== "PASS") {
-        return res.json({
-          ...buildDegradedResponse(managerOutput),
-          verdict: "FAIL_AFTER_REVISION",
-          failed_checks: critique.failed_checks,
-          latency_ms: Date.now() - startedAt,
-        });
-      }
+    if (!Array.isArray(lats) || !Array.isArray(lngs)) {
+      return res.status(400).json({ error: "lats and lngs must be arrays" });
+    }
+    if (lats.length !== lngs.length) {
+      return res.status(400).json({ error: "lats and lngs must be the same length" });
+    }
+    if (typeof count === "number" && count !== lats.length) {
+      return res.status(400).json({ error: "count does not match lats/lngs length" });
+    }
+    if (lats.length === 0) {
+      return res.status(400).json({ error: "at least 1 location is required" });
+    }
+    if (lats.length > MAX_SITES) {
+      return res.status(400).json({ error: `maximum ${MAX_SITES} locations allowed, got ${lats.length}` });
+    }
+    if (lats.some((v) => typeof v !== "number") || lngs.some((v) => typeof v !== "number")) {
+      return res.status(400).json({ error: "all lats/lngs must be numbers" });
     }
 
-    if (critique.verdict === "FAIL") {
-      return res.json({
-        ...critique.final,
-        verdict: "FAIL",
-        failed_checks: critique.failed_checks,
-        latency_ms: Date.now() - startedAt,
-      });
-    }
+    const startedAt = Date.now();
+
+    // run every site's full pipeline (3 employee agents + manager + critique) in parallel
+    const siteResults = await Promise.all(
+      lats.map((lat, i) =>
+        runSitePipeline({ lat, lng: lngs[i], address: addresses?.[i] })
+      )
+    );
+
+    const report = await runReportAgent(siteResults);
 
     return res.json({
-      ...critique.final,
-      verdict: "PASS",
-      partial_data: managerOutput.partial,
-      coherence_notes: managerOutput.coherenceNotes,
-      sources: {
-        heat: managerOutput.heatResult.source,
-        shade: managerOutput.shadeResult.source,
-        financial: managerOutput.financialResult.source,
-      },
+      ...report,
+      total_sites: siteResults.length,
       latency_ms: Date.now() - startedAt,
     });
   } catch (err) {

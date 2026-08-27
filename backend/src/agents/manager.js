@@ -3,6 +3,7 @@ const { runShadeAgent } = require("./shadeAgent");
 const { runFinancialAgent } = require("./financialAgent");
 const { coherenceCheck } = require("../lib/validators");
 const { computeTSS } = require("../lib/tssFormula");
+const { llmFallback } = require("../lib/mockData");
 const groq = require("../services/groqClient");
 
 // Job 4: draft recommendation (only LLM call in the manager)
@@ -23,13 +24,18 @@ Rules:
     revision_context: revisionContext || null,
   });
 
-  return groq.chat({ system, user, jsonMode: true, timeoutMs: 6000 });
+  try {
+    return await groq.chat({ system, user, jsonMode: true, timeoutMs: 15000 });
+  } catch (e) {
+    console.warn("[Manager] Groq recommendation failed; using mock fallback.");
+    return llmFallback;
+  }
 }
 
-async function runManager({ lat, lng }) {
+async function runManager({ lat, lng, polygonAoi }) {
   // Step 2: dispatch three employee agents in parallel
   const [heatResult, shadeResult, financialResult] = await Promise.all([
-    runHeatAgent({ lat, lng }),
+    runHeatAgent({ lat, lng, polygonAoi }),
     runShadeAgent({ lat, lng }),
     runFinancialAgent({ lat, lng }),
   ]);
