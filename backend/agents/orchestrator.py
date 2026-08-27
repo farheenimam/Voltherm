@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from database import TaskRecord
 import httpx
 
-AGENT_SERVICE_URL = os.getenv("AGENT_SERVICE_URL", "http://localhost:5000")
+AGENT_SERVICE_URL = os.getenv("AGENT_SERVICE_URL", "http://localhost:4000")
 
 async def call_agent(agent: str, prompt: str, context: Dict[str, Any]) -> Dict[str, Any]:
     """Call the external Node agent service and return its JSON response.
