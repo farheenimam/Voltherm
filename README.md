@@ -10,7 +10,7 @@ This repo is a two-service app:
 ```
 voltherm/
 ├── frontend/   Vite + React client (landing page + dashboard)
-└── backend/    Python FastAPI service (agents, scoring, FortyGuard proxy)
+└── backend/    Node/Express API (agents, scoring, FortyGuard proxy)
 ```
 
 The frontend **never** talks to FortyGuard or Anthropic directly — every
@@ -24,9 +24,8 @@ You'll need Node 18+ and two terminal tabs.
 ```bash
 # 1. clone & install
 git clone <this-repo> voltherm && cd voltherm
-cp backend/.env.example backend/.env      # fill in real keys
+cp .env.example backend/.env      # fill in real keys
 cp .env.example frontend/.env     # only VITE_API_BASE_URL is used here
-# Optional: run the Node agent service in backend/node_agent or use docker-compose (see docker-compose.yml)
 
 # 2. backend
 cd backend

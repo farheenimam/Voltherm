@@ -19,4 +19,4 @@ class ScreenSiteResponse(BaseModel):
     recommendation: Optional[str] = None
     verdict: str
     sources: Dict[str, Any]
-    latency_ms: int
+    latency_ms: ints
