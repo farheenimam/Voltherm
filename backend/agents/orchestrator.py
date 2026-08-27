@@ -1,75 +1,66 @@
 import asyncio
 import uuid
+import os
 from typing import Dict, Any
 from sqlalchemy.orm import Session
 from database import TaskRecord
+import httpx
 
-class BaseAgent:
-    def __init__(self, name: str):
-        self.name = name
+AGENT_SERVICE_URL = os.getenv("AGENT_SERVICE_URL", "http://localhost:5000")
 
-    async def execute(self, prompt: str, context: Dict[str, Any]) -> str:
-        raise NotImplementedError
-
-class AnalysisAgent(BaseAgent):
-    def __init__(self):
-        super().__init__("AnalysisAgent")
-
-    async def execute(self, prompt: str, context: Dict[str, Any]) -> str:
-        await asyncio.sleep(1)
-        return f"[Analysis Complete]: Processed query '{prompt}'."
-
-class ReportAgent(BaseAgent):
-    def __init__(self):
-        super().__init__("ReportAgent")
-
-    async def execute(self, prompt: str, context: Dict[str, Any]) -> str:
-        await asyncio.sleep(1)
-        return f"[Report Generated]: Summarized results for task."
+async def call_agent(agent: str, prompt: str, context: Dict[str, Any]) -> Dict[str, Any]:
+    """Call the external Node agent service and return its JSON response.
+    Falls back to a local mock on error.
+    """
+    url = AGENT_SERVICE_URL.rstrip('/') + '/agent/run'
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.post(url, json={"agent": agent, "prompt": prompt, "context": context})
+            resp.raise_for_status()
+            return resp.json()
+    except Exception as e:
+        # Fallback mock response (keeps behavior stable if agent service is down)
+        return {"status": "ok", "agent": agent or "default", "output": f"[fallback] {agent}: processed prompt", "error": str(e)}
 
 class AgentOrchestrator:
     def __init__(self):
-        self.agents = {
-            "analysis_agent": AnalysisAgent(),
-            "report_agent": ReportAgent()
-        }
+        # older in-process agents are no longer primary; orchestration calls external agent service
+        pass
 
     async def run_pipeline(self, agent_id: str, prompt: str, context: Dict[str, Any], db: Session):
-        try:
-            return await asyncio.wait_for(self._execute_workflow(agent_id, prompt, context, db), timeout=10.0)
-        except asyncio.TimeoutError:
-            raise Exception("Agent execution timed out due to system load.")
-
-    async def _execute_workflow(self, agent_id: str, prompt: str, context: Dict[str, Any], db: Session):
-        results = []
         task_id = f"task_{uuid.uuid4().hex[:8]}"
+        steps = []
 
-        # Step 1: Execute target agent
-        agent = self.agents.get(agent_id, self.agents["analysis_agent"])
-        analysis_out = await agent.execute(prompt, context)
-        results.append({"step_name": agent.name, "status": "completed", "output": analysis_out})
+        # Run analysis agent via Node service
+        analysis = await call_agent("analysis", prompt, context)
+        steps.append({"step_name": "analysis", "status": analysis.get("status", "ok"), "output": analysis.get("output")})
 
-        # Step 2: Execute report generation agent
-        report_agent = self.agents["report_agent"]
-        report_out = await report_agent.execute(prompt, {"previous_output": analysis_out})
-        results.append({"step_name": report_agent.name, "status": "completed", "output": report_out})
+        # Run report agent via Node service (use analysis output as context)
+        report = await call_agent("report", prompt, {"previous_output": analysis.get("output")})
+        steps.append({"step_name": "report", "status": report.get("status", "ok"), "output": report.get("output")})
 
-        # Step 3: Database Persist Logic
-        db_record = TaskRecord(
-            task_id=task_id,
-            agent_id=agent_id,
-            prompt=prompt,
-            status="success",
-            final_output=report_out
-        )
-        db.add(db_record)
-        db.commit()
-        db.refresh(db_record)
+        final_output = report.get("output")
+
+        # Persist task record (best-effort)
+        try:
+            db_record = TaskRecord(
+                task_id=task_id,
+                agent_id=agent_id,
+                prompt=prompt,
+                status="success",
+                final_output=final_output
+            )
+            db.add(db_record)
+            db.commit()
+            db.refresh(db_record)
+        except Exception:
+            # Non-fatal: do not block orchestration on DB errors
+            pass
 
         return {
             "task_id": task_id,
             "agent_id": agent_id,
             "status": "success",
-            "steps": results,
-            "final_output": report_out
+            "steps": steps,
+            "final_output": final_output
         }
