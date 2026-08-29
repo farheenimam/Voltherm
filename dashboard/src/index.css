@@ -1,0 +1,118 @@
+/* ─────────────────────────────────────────────────────────────
+   VoltShield Design System Styles
+   Visual Theme: Deep Charcoal Black + Dark Slate + Safety Orange
+   ───────────────────────────────────────────────────────────── */
+
+:root {
+  --bg-app: #0D0D11;
+  --bg-card: #16171C;
+  --bg-border: #22242B;
+  --brand-orange: #FF6B00;
+  --brand-orange-hover: #FF8533;
+  --status-optimal: #10B981;
+  --status-warning: #F59E0B;
+  --status-critical: #EF4444;
+  --text-primary: #FFFFFF;
+  --text-muted: #94A3B8;
+  --text-dark: #64748B;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Roboto Mono', monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-app);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--bg-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-dark);
+}
+
+/* Utility Layout Classes */
+.card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--bg-border);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.btn-primary {
+  background-color: var(--brand-orange);
+  color: #FFFFFF;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+.btn-primary:hover {
+  background-color: var(--brand-orange-hover);
+  box-shadow: 0 0 15px rgba(255, 107, 0, 0.4);
+}
+
+.btn-secondary {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+  border: 1px solid var(--bg-border);
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-secondary:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: var(--text-dark);
+}
+
+/* Grid Background Asset */
+.bg-road-grid {
+  background-size: 40px 40px;
+  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+}
+
+/* Leaflet Dark Mode Tile Filter Hack */
+.leaflet-tile {
+  filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+}
+.leaflet-container {
+  background: #0D0D11 !important;
+}
+
