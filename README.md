@@ -1,116 +1,84 @@
-# Voltherm
+# VoltShield (Voltherm) — Climate-Resilient EV Siting Copilot
 
-Eliminate EV site heat risk before you break ground. Voltherm screens candidate
-charging sites with a multi-agent pipeline (heat, shade, financial, critique)
-built on the FortyGuard Heat Intelligence API, and returns a single
-Thermal Site Score (TSS) with a defensible breakdown.
+**Built for the FortyGuard Urban Heat Hackathon 2026**
 
-This repo is a two-service app:
+Eliminate EV site heat risk before you break ground. VoltShield screens candidate DC fast charging sites with an autonomous multi-agent pipeline built on the **FortyGuard Heat Intelligence API** and **Groq LLM**, returning a deterministic **Thermal Siting Score (TSS 0–100)**, an interactive **Mitigation Design Canvas**, and federal **NEVI 97% Uptime SLA Compliance Audits**.
+
+---
+
+## 🌟 Key Architecture & Capabilities
 
 ```
-voltherm/
-├── frontend/   Vite + React client (landing page + dashboard)
-└── backend/    Node/Express API (agents, scoring, FortyGuard proxy)
+Voltherm/
+├── frontend/    Landing Page (Photo hero, before/after thermal evidence, 1-click launch)
+├── dashboard/   11-Screen Enterprise Command Center (Portfolio, Grid Map, Wizard, Sandbox, Mitigation Editor, NEVI Report)
+└── backend/     Node/Express API + SQLite (voltherm.db) + Multi-Agent Pipeline + FortyGuard API + Groq LLM
 ```
 
-The frontend **never** talks to FortyGuard or Anthropic directly — every
-external call is proxied through the backend so API keys never reach the
-browser.
+### 1. FortyGuard 10m Hyperlocal Urban Heat Intelligence
+* Live integration with `api.fortyguard.com` using dedicated API keys for Heat Exceedance, Shade Segmentation, and Financial Curailment.
+* Identifies localized microclimate heat bubbles on dark asphalt parcels that regional weather stations miss.
 
-## Quick start (local dev)
+### 2. Autonomous Multi-Agent Pipeline
+* **Heat Agent:** Queries FortyGuard 10m LTM for annual hours exceeding 35°C (95°F).
+* **Shade Agent:** Segments satellite imagery for tree canopy deficit and surface albedo absorption.
+* **Financial Agent:** Computes curtailed power losses ($/yr) based on local utility tariffs and charging dwell times.
+* **Manager Agent:** Synthesizes findings, computes deterministic TSS, and drafts engineering recommendations via Groq LLM.
+* **Critique Agent:** Automated fact-checker running 4 validation tests (Numeric Consistency, Fact Grounding, Relevance, Completeness) with bounded revision loops.
 
-You'll need Node 18+ and two terminal tabs.
+### 3. Persistent SQLite Database (`backend/voltherm.db`)
+* Powered by `better-sqlite3` with Write-Ahead Logging (`WAL` mode).
+* Persists candidate sites, GPS parcel coordinates, hardware configurations, dispenser telemetry, applied mitigations, and AI Copilot chat history.
+
+### 4. Interactive Mitigation Design Canvas
+* Live geospatial Leaflet canvas centered on the parcel.
+* Real-time toggles for **Bifacial Solar Canopies** and **High-Albedo Reflective Sealcoats**.
+* Instant recalculation of mitigated TSS (+24 to +46 pts), surface cooling (-12°F), and 1.7-year CAPEX payback.
+
+### 5. NEVI 97% Uptime Compliance Audit Report
+* Formal engineering letterhead report with GIS satellite snapshot, economic loss breakdown, mitigation ROI specs, and Professional Engineer (PE) certification block ready for state DOT grant awards.
+
+---
+
+## 🚀 Quick Start (Local Development)
+
+### Prerequisites
+* Node.js 18+
+
+### 1. Launch the Services
+
+In 3 separate terminal tabs (or run from root):
 
 ```bash
-# 1. clone & install
-git clone <this-repo> voltherm && cd voltherm
-cp .env.example backend/.env      # fill in real keys
-cp .env.example frontend/.env     # only VITE_API_BASE_URL is used here
+# Terminal 1: Backend API & SQLite Database (:4000)
+npm run backend
 
-# 2. backend
-cd backend
-python -m venv venv
-# Windows:
-.\venv\Scripts\activate
-# Mac/Linux:
-source venv/bin/activate
-pip install -r requirements.txt
-python main.py     # starts on http://localhost:4000
+# Terminal 2: Enterprise Command Center Dashboard (:5173)
+npm run dashboard
 
-# 3. frontend (new terminal)
-cd frontend
-npm install
-npm run dev           # starts Vite on http://localhost:5173
+# Terminal 3: Public Marketing Landing Page (:5174)
+npm run landing
 ```
 
-Open http://localhost:5173. The Vite dev server proxies `/api/*` requests to
-the backend (see `frontend/vite.config.js`), so the two run on separate
-ports without any CORS headaches in dev.
+### 2. Access the Applications
+* **Command Center Dashboard:** [http://localhost:5173/portfolio](http://localhost:5173/portfolio) (Zero login friction, auto-authenticated as Senior Siting Director *Mara Velasquez, PE*)
+* **Public Landing Page:** [http://localhost:5174/](http://localhost:5174/) (Photo hero, before/after thermal evidence, 1-click command center launch)
+* **Backend Health & REST API:** [http://localhost:4000/api/health](http://localhost:4000/api/health)
 
-## What's implemented vs. stubbed
+---
 
-This scaffold is wired end-to-end but the **agent intelligence itself is a
-dummy placeholder** — see `backend/src/agents/*`. Each agent function is a
-fully-typed stub that returns realistic mock output on a short delay, with a
-clearly marked `// TODO(agent):` block showing where the real Anthropic-backed
-reasoning goes. The deterministic parts (TSS scoring formula, validators,
-routing, error handling, the whole frontend) are real and functional.
+## 📮 API Endpoints & Postman Collection
 
-| Piece | Status |
-|---|---|
-| Landing page / dashboard UI | ✅ built |
-| `AgentStatusLoader` multi-step loading UI | ✅ built |
-| `POST /api/screen-site` route + validation | ✅ built |
-| TSS scoring formula (`lib/tssFormula.js`) | ✅ built (deterministic) |
-| `heatAgent`, `shadeAgent`, `financialAgent`, `critiqueAgent` | 🧪 dummy — plug in real model calls |
-| `fortyguardClient` (5 endpoints) | 🧪 dummy — plug in real HTTP calls |
-| `reportGenerator` (PDF export) | 🧪 dummy — plug in real PDF lib |
-| Site storage (`db/sites.js`) | ✅ built (in-memory, swap for SQLite/Supabase) |
+Import the included Postman Collection:
+👉 **[`Voltherm_API.postman_collection.json`](file:///Users/ishaq/Desktop/react/Voltherm/Voltherm_API.postman_collection.json)**
 
-## Environment variables
-
-See `.env.example` at the repo root for the full list. Copy the relevant
-half into `backend/.env` and `frontend/.env`. `.env` files are gitignored;
-never commit real keys.
-
-## Scripts
-
-| Location | Command | Does |
-|---|---|---|
-| `backend/` | `npm run dev` | Start API with hot reload (nodemon) |
-| `backend/` | `npm start` | Start API in production mode |
-| `frontend/` | `npm run dev` | Start Vite dev server |
-| `frontend/` | `npm run build` | Production build to `frontend/dist` |
-| `frontend/` | `npm run preview` | Preview the production build locally |
-
-## Architecture at a glance
-
-```
-Browser ──▶ frontend (Vite/React)
-              │  fetch('/api/screen-site')  — lib/api.js
-              ▼
-           backend (Express)
-              │  routes/screenSite.js
-              ▼
-           agents/manager.js  ── orchestrates ──▶ heatAgent
-                                              ├──▶ shadeAgent
-                                              ├──▶ financialAgent
-                                              └──▶ critiqueAgent
-              │
-              ▼
-           lib/tssFormula.js  (deterministic scoring, §2 of spec)
-              │
-              ▼
-           services/fortyguardClient.js  ──▶ FortyGuard Heat Intelligence API
-           services/reportGenerator.js   ──▶ PDF export via heat_intelligence
-```
-
-## For judges
-
-1. `cp .env.example backend/.env` and `cp .env.example frontend/.env` — the
-   defaults are enough to run the app with dummy agent output, no real keys
-   required.
-2. Run backend then frontend as above.
-3. Visit the dashboard, submit a site through the scorecard form, and watch
-   `AgentStatusLoader` step through Heat → Shade → Financial → Critique
-   before the TSS result renders.
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/health` | Service liveness check |
+| `GET` | `/api/sites` | List all sites & portfolio aggregates from SQLite |
+| `GET` | `/api/sites/:id` | Fetch complete parcel telemetry & dispenser nodes |
+| `POST` | `/api/sites` | Create a new candidate site from wizard inputs |
+| `PUT` | `/api/sites/:id/mitigations` | Persist solar canopy and albedo mitigations to SQLite |
+| `POST` | `/api/copilot/chat` | Ask VoltShield AI Copilot (Groq LLM with site context) |
+| `POST` | `/api/screen-site` | Run 5-agent pipeline on GPS coordinates |
+| `POST` | `/api/screen-sites` | Multi-site comparative portfolio audit |

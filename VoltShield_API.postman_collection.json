@@ -1,0 +1,183 @@
+{
+  "info": {
+    "_postman_id": "voltherm-api-collection-2026",
+    "name": "VoltShield / Voltherm REST & Multi-Agent API",
+    "description": "Comprehensive REST and Agent API for VoltShield EV thermal screening and resilience design. Backed by SQLite (voltherm.db), FortyGuard Heat Intelligence, and Groq LLM.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:4000/api/health",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "4000",
+          "path": ["api", "health"]
+        },
+        "description": "Liveness check verifying server is active."
+      },
+      "response": []
+    },
+    {
+      "name": "2. Siting Portfolio - Get All Sites",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:4000/api/sites",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "4000",
+          "path": ["api", "sites"]
+        },
+        "description": "Returns all screened candidate sites stored in SQLite with portfolio-level aggregate metrics."
+      },
+      "response": []
+    },
+    {
+      "name": "3. Siting Sandbox - Get Single Site Details",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:4000/api/sites/site_001",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "4000",
+          "path": ["api", "sites", "site_001"]
+        },
+        "description": "Fetches complete telemetry for a site: dispenser status, monthly throttling hours, heat dissipation ratio, and baseline TSS."
+      },
+      "response": []
+    },
+    {
+      "name": "4. Setup Wizard - Create New Site",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"site_name\": \"Austin Tech Ridge\",\n  \"location\": \"Austin, TX • Urban Corridor\",\n  \"latitude\": 30.2672,\n  \"longitude\": -97.7431,\n  \"surface_type\": \"Dark Asphalt (Albedo 0.05)\",\n  \"charger_model\": \"ABB Terra 184 (180kW)\",\n  \"cooling_type\": \"Air-Cooled\",\n  \"stall_count\": 8,\n  \"utility_rate_kwh\": 0.16,\n  \"customer_price_kwh\": 0.45,\n  \"daily_sessions\": 18\n}"
+        },
+        "url": {
+          "raw": "http://localhost:4000/api/sites",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "4000",
+          "path": ["api", "sites"]
+        },
+        "description": "Submits a new candidate site from the setup wizard, calculates microclimate TSS and revenue risk, and saves to SQLite."
+      },
+      "response": []
+    },
+    {
+      "name": "5. Mitigation Editor - Save Mitigations",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"mitigations\": [\n    {\n      \"type\": \"Solar Canopy\",\n      \"coverage_pct\": 100\n    },\n    {\n      \"type\": \"Cool Reflective Paint\",\n      \"coverage_pct\": 100\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "http://localhost:4000/api/sites/site_001/mitigations",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "4000",
+          "path": ["api", "sites", "site_001", "mitigations"]
+        },
+        "description": "Applies physical interventions to a site, recalculates mitigated TSS (+24 points), saves to SQLite, and updates NEVI compliance."
+      },
+      "response": []
+    },
+    {
+      "name": "6. VoltShield AI Copilot - Chat",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"site_id\": \"site_001\",\n  \"message\": \"What is the financial payback of installing a bifacial solar canopy here?\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:4000/api/copilot/chat",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "4000",
+          "path": ["api", "copilot", "chat"]
+        },
+        "description": "Real-time AI Engineering Copilot powered by Groq LLM with site context injection and SQLite chat history."
+      },
+      "response": []
+    },
+    {
+      "name": "7. Multi-Agent Pipeline - Screen Site",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"lat\": 33.4484,\n  \"lng\": -112.0740,\n  \"address\": \"Northgate Mall, Phoenix, AZ\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:4000/api/screen-site",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "4000",
+          "path": ["api", "screen-site"]
+        },
+        "description": "Dispatches the 3 worker agents (Heat, Shade, Financial) + Manager Agent + Critique Agent with bounded revision loop."
+      },
+      "response": []
+    },
+    {
+      "name": "8. Multi-Site Comparative Ranking Report",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"lats\": [33.4484, 32.7767, 47.6062],\n  \"lngs\": [-112.0740, -96.7970, -122.3321],\n  \"addresses\": [\n    \"Phoenix, AZ - Northgate Mall\",\n    \"Dallas, TX - Deep Ellum\",\n    \"Seattle, WA - Emerald Marina\"\n  ]\n}"
+        },
+        "url": {
+          "raw": "http://localhost:4000/api/screen-sites",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "4000",
+          "path": ["api", "screen-sites"]
+        },
+        "description": "Evaluates up to 4 candidate sites concurrently and produces a ranked portfolio audit report."
+      },
+      "response": []
+    }
+  ]
+}

@@ -6,6 +6,7 @@ import {
   DollarSign, Clock, Thermometer, Maximize2, RotateCcw
 } from 'lucide-react';
 import { simulateMitigations } from '../mockData.js';
+import { saveMitigations } from '../services/api.js';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { setMapTileLayer, createChargerNodePin, createOrangeLocationPin } from '../utils/mapConfig.js';
@@ -240,8 +241,11 @@ export default function Editor({ sites, onUpdateSite }) {
     };
   }, [site, mapLayer, selectedMitigations, showHotspots, showCanopyLayer, showStallPins]);
 
-  const handleSave = () => {
-    const updated = {
+  const handleSave = async () => {
+    // Persist to backend SQLite
+    const backendSite = await saveMitigations(site.site_id, selectedMitigations);
+
+    const updated = backendSite || {
       ...site,
       metrics: {
         ...site.metrics,

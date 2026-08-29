@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, CheckCircle2, Circle, AlertCircle } from 'lucide-react';
+import { createSite } from '../services/api.js';
 
 export default function Loader({ onAddSite }) {
   const [progress, setProgress] = useState(0);
@@ -34,32 +35,30 @@ export default function Loader({ onAddSite }) {
 
   useEffect(() => {
     if (progress === 100) {
-      const pendingRaw = sessionStorage.getItem('voltshield_pending_site');
-      if (pendingRaw) {
-        const pendingSite = JSON.parse(pendingRaw);
-        
-        if (onAddSite) {
-          onAddSite(pendingSite);
-        } else {
-          const saved = localStorage.getItem('voltshield_sites');
-          const sites = saved ? JSON.parse(saved) : [];
-          if (!sites.some(s => s.site_id === pendingSite.site_id)) {
-            const updated = [pendingSite, ...sites];
-            localStorage.setItem('voltshield_sites', JSON.stringify(updated));
+      async function finalizeSite() {
+        const pendingRaw = sessionStorage.getItem('voltshield_pending_site');
+        if (pendingRaw) {
+          const pendingSite = JSON.parse(pendingRaw);
+          
+          // Save to SQLite backend via REST API
+          const savedSite = await createSite(pendingSite);
+          
+          if (onAddSite) {
+            onAddSite(savedSite);
           }
+          
+          sessionStorage.removeItem('voltshield_pending_site');
+          
+          setTimeout(() => {
+            navigate(`/sandbox/${savedSite.site_id}`);
+          }, 400);
+        } else {
+          navigate('/portfolio');
         }
-        
-        sessionStorage.removeItem('voltshield_pending_site');
-        
-        // Short timeout for seamless visual transition
-        setTimeout(() => {
-          navigate(`/sandbox/${pendingSite.site_id}`);
-        }, 400);
-      } else {
-        navigate('/portfolio');
       }
+      finalizeSite();
     }
-  }, [progress, navigate]);
+  }, [progress, navigate, onAddSite]);
 
   const tasks = [
     { id: 1, label: 'Querying FortyGuard 10m Urban Heat LTM Grid...' },

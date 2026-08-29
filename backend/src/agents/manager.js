@@ -8,7 +8,7 @@ const groq = require("../services/groqClient");
 
 // Job 4: draft recommendation (only LLM call in the manager)
 async function generateRecommendation({ tssResult, heat, shade, financial, coherenceNotes, revisionContext }) {
-  const system = `You are Voltherm's site engineer. Given validated EV-charging-site heat/shade/financial data, write a short plain-English recommendation and an ROI estimate.
+  const system = `You are VoltShield's senior thermal siting engineer. Given validated EV-charging-site heat/shade/financial data, write a short plain-English recommendation and an ROI estimate.
 Rules:
 - Only use numbers that appear in the provided data. Never invent a figure.
 - Address the dominant risk driver: if canopy_pct < 30, you MUST talk about shade/canopy. If wet_bulb_c is high (>26C), you MUST address cooling load.

@@ -17,7 +17,7 @@ function rankSites(siteResults) {
 // Optional single Groq call: short portfolio-level summary comparing the ranked sites.
 // Not required for ranking itself (that's deterministic) — just adds a human-readable "why".
 async function generatePortfolioSummary(rankedSites) {
-  const system = `You are Voltherm's site engineer. Given a ranked list of EV charging sites (best to worst by thermal stress score), write a short 2-3 sentence summary explaining which site is the best choice and why, using only the numbers provided. Return strict JSON: { "summary": string }`;
+  const system = `You are VoltShield's senior thermal siting engineer. Given a ranked list of EV charging sites (best to worst by thermal stress score), write a short 2-3 sentence summary explaining which site is the best choice and why, using only the numbers provided. Return strict JSON: { "summary": string }`;
 
   const user = JSON.stringify(
     rankedSites.map((s) => ({

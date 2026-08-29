@@ -1,18 +1,19 @@
 {
-  "name": "voltherm-frontend",
-  "version": "0.1.0",
+  "name": "voltshield-frontend",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview",
-    "lint": "eslint . --ext js,jsx"
+    "preview": "vite preview"
   },
   "dependencies": {
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.26.1"
+    "react-router-dom": "^6.26.1",
+    "lucide-react": "^0.436.0",
+    "leaflet": "^1.9.4"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",

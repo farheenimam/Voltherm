@@ -4,7 +4,7 @@ import Sidebar from '../components/Sidebar.jsx';
 import ExportModal from './ExportModal.jsx';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { getCopilotResponse } from '../mockData.js';
+import { sendCopilotChat, fetchChatHistory } from '../services/api.js';
 import { setMapTileLayer, createChargerNodePin } from '../utils/mapConfig.js';
 import {
   FileText, Edit, ShieldAlert, DollarSign, MessageSquare, Send,
@@ -20,10 +20,11 @@ export default function Sandbox({ sites, user, onLogout }) {
   const [hoveredBar, setHoveredBar] = useState(null);
 
   const [chatQuery, setChatQuery] = useState('');
+  const [isCopilotTyping, setIsCopilotTyping] = useState(false);
   const [chatLogs, setChatLogs] = useState([
     {
       sender: 'copilot',
-      text: 'VoltShield Copilot online. Hyperlocal FortyGuard thermal data loaded. Ask me for siting recommendations, solar canopy sizing, or NEVI compliance risks.'
+      text: 'VoltShield Copilot online (Groq LLM Active). FortyGuard micro-climate telemetry loaded. Ask me about solar canopy sizing, surface albedo, or NEVI compliance risks.'
     }
   ]);
 
@@ -117,30 +118,52 @@ export default function Sandbox({ sites, user, onLogout }) {
     }
   };
 
-  const handleSendChat = (e) => {
+  // Load existing chat history from SQLite when site changes
+  useEffect(() => {
+    if (!site?.site_id) return;
+    async function loadHistory() {
+      const history = await fetchChatHistory(site.site_id);
+      if (history && history.length > 0) {
+        setChatLogs(history.map(h => ({ sender: h.sender, text: h.message })));
+      }
+    }
+    loadHistory();
+  }, [site?.site_id]);
+
+  const handleSendChat = async (e) => {
     if (e) e.preventDefault();
-    if (!chatQuery.trim()) return;
+    if (!chatQuery.trim() || isCopilotTyping) return;
 
     const userMessage = chatQuery;
-    const botResponse = getCopilotResponse(userMessage);
-
-    setChatLogs(prev => [
-      ...prev,
-      { sender: 'user', text: userMessage },
-      { sender: 'copilot', text: botResponse }
-    ]);
     setChatQuery('');
+    
+    // Optimistic user message
+    setChatLogs(prev => [...prev, { sender: 'user', text: userMessage }]);
+    setIsCopilotTyping(true);
+
+    try {
+      const botResponse = await sendCopilotChat(site.site_id, userMessage);
+      setChatLogs(prev => [...prev, { sender: 'copilot', text: botResponse }]);
+    } catch (err) {
+      setChatLogs(prev => [...prev, { sender: 'copilot', text: "Unable to reach Groq copilot engine." }]);
+    } finally {
+      setIsCopilotTyping(false);
+    }
   };
 
-  const handleChipClick = (promptText) => {
-    setChatQuery(promptText);
-    const botResponse = getCopilotResponse(promptText);
-    setChatLogs(prev => [
-      ...prev,
-      { sender: 'user', text: promptText },
-      { sender: 'copilot', text: botResponse }
-    ]);
-    setChatQuery('');
+  const handleChipClick = async (promptText) => {
+    if (isCopilotTyping) return;
+    setChatLogs(prev => [...prev, { sender: 'user', text: promptText }]);
+    setIsCopilotTyping(true);
+
+    try {
+      const botResponse = await sendCopilotChat(site.site_id, promptText);
+      setChatLogs(prev => [...prev, { sender: 'copilot', text: botResponse }]);
+    } catch (err) {
+      setChatLogs(prev => [...prev, { sender: 'copilot', text: "Unable to reach Groq copilot engine." }]);
+    } finally {
+      setIsCopilotTyping(false);
+    }
   };
 
   if (!site) return <div style={{ color: '#fff', padding: 40 }}>Site not found.</div>;
@@ -408,6 +431,23 @@ export default function Sandbox({ sites, user, onLogout }) {
                   {msg.text}
                 </div>
               ))}
+              {isCopilotTyping && (
+                <div style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.025)',
+                  border: '1px solid var(--bg-border)',
+                  borderRadius: 8,
+                  padding: '8px 12px',
+                  fontSize: 11,
+                  color: 'var(--brand-orange)',
+                  alignSelf: 'flex-start',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6
+                }}>
+                  <Sparkles size={13} className="spin-slow" />
+                  <span>Groq AI Copilot reasoning...</span>
+                </div>
+              )}
             </div>
 
             {/* Input field */}
