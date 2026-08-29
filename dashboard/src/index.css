@@ -108,11 +108,56 @@ body {
                     linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
 }
 
-/* Leaflet Dark Mode Tile Filter Hack */
-.leaflet-tile {
+/* Leaflet Dark Mode & Satellite Tile Rules */
+.leaflet-container.dark-mode-tiles .leaflet-tile {
   filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+}
+.leaflet-container.satellite-tiles .leaflet-tile {
+  filter: none !important;
 }
 .leaflet-container {
   background: #0D0D11 !important;
+  font-family: var(--font-sans);
+}
+.leaflet-popup-content-wrapper {
+  background: #16171C !important;
+  color: #FFFFFF !important;
+  border: 1px solid var(--bg-border);
+  border-radius: 8px !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5) !important;
+}
+.leaflet-popup-tip {
+  background: #16171C !important;
+}
+
+/* Keyframe Animations */
+@keyframes vs-pulse {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  70% { transform: scale(1.6); opacity: 0; }
+  100% { transform: scale(0.9); opacity: 0; }
+}
+
+@keyframes radar-sweep {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Print Styles for NEVI Audit Reports */
+@media print {
+  body {
+    background: #FFFFFF !important;
+    color: #000000 !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-page {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
 }
 

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Loader2, CheckCircle2 } from 'lucide-react';
+import { Loader2, CheckCircle2, Circle, AlertCircle } from 'lucide-react';
 
-export default function Loader() {
+export default function Loader({ onAddSite }) {
   const [progress, setProgress] = useState(0);
   const [step, setStep] = useState(1);
   const navigate = useNavigate();
@@ -15,52 +15,58 @@ export default function Loader() {
           return 100;
         }
         
-        // Progress steps logic matching Page 6 reference
-        const nextProg = prev + 5;
-        if (nextProg < 35) {
-          setStep(1); // Fetching satellite
+        const nextProg = prev + 4;
+        if (nextProg < 30) {
+          setStep(1);
         } else if (nextProg < 60) {
-          setStep(2); // Collecting heat data
+          setStep(2);
         } else if (nextProg < 85) {
-          setStep(3); // Calculating TSS
+          setStep(3);
         } else {
-          setStep(4); // Generating AI Insights
+          setStep(4);
         }
         return nextProg;
       });
-    }, 150);
+    }, 100);
 
     return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
     if (progress === 100) {
-      // Hydrate site into local storage list
       const pendingRaw = sessionStorage.getItem('voltshield_pending_site');
       if (pendingRaw) {
         const pendingSite = JSON.parse(pendingRaw);
         
-        // Fetch current sites list, append pending, and save
-        const saved = localStorage.getItem('voltshield_sites');
-        const sites = saved ? JSON.parse(saved) : [];
-        
-        // Check if already added to prevent duplication
-        if (!sites.some(s => s.site_id === pendingSite.site_id)) {
-          const updated = [pendingSite, ...sites];
-          localStorage.setItem('voltshield_sites', JSON.stringify(updated));
+        if (onAddSite) {
+          onAddSite(pendingSite);
+        } else {
+          const saved = localStorage.getItem('voltshield_sites');
+          const sites = saved ? JSON.parse(saved) : [];
+          if (!sites.some(s => s.site_id === pendingSite.site_id)) {
+            const updated = [pendingSite, ...sites];
+            localStorage.setItem('voltshield_sites', JSON.stringify(updated));
+          }
         }
         
         sessionStorage.removeItem('voltshield_pending_site');
         
-        // Redirect to sandbox view of the new site
-        navigate(`/sandbox/${pendingSite.site_id}`);
-        // Force refresh state on App.jsx if needed (HashRouter handles this on reload)
-        window.location.reload();
+        // Short timeout for seamless visual transition
+        setTimeout(() => {
+          navigate(`/sandbox/${pendingSite.site_id}`);
+        }, 400);
       } else {
         navigate('/portfolio');
       }
     }
   }, [progress, navigate]);
+
+  const tasks = [
+    { id: 1, label: 'Querying FortyGuard 10m Urban Heat LTM Grid...' },
+    { id: 2, label: 'Segmenting Satellite Surface Albedo & Tree Canopy...' },
+    { id: 3, label: 'Computing Thermal Siting Score (TSS) & Revenue Loss...' },
+    { id: 4, label: 'Gemini Copilot Generating Engineering Mitigations...' }
+  ];
 
   return (
     <div style={{
@@ -74,112 +80,147 @@ export default function Loader() {
       padding: 24
     }} className="bg-road-grid">
       <div style={{
-        maxWidth: 480,
+        maxWidth: 520,
         width: '100%',
+        backgroundColor: 'var(--bg-card)',
+        border: '1px solid var(--bg-border)',
+        borderRadius: 20,
+        padding: '48px 36px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        gap: 24,
-        textAlign: 'center'
+        gap: 32,
+        textAlign: 'center',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)'
       }}>
-        {/* Pulsing Orange Lightning Spinner */}
-        <div style={{ position: 'relative', width: 90, height: 90, marginBottom: 12 }}>
-          {/* External rotating frame */}
-          <Loader2 size={90} color="var(--brand-orange)" style={{
-            animation: 'spin 2s linear infinite',
-            opacity: 0.8
-          }} />
-          {/* Centered Flash Icon */}
+        
+        {/* Pulsing Radar Circle matching Screen 7 Reference */}
+        <div style={{
+          position: 'relative',
+          width: 110,
+          height: 110,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          {/* Radar background ring */}
           <div style={{
             position: 'absolute',
-            left: '50%',
-            top: '50%',
-            transform: 'translate(-50%, -50%)'
+            width: '100%',
+            height: '100%',
+            borderRadius: '50%',
+            border: '2px solid rgba(255, 107, 0, 0.25)',
+            boxShadow: '0 0 25px rgba(255, 107, 0, 0.2)'
+          }} />
+
+          {/* Rotating radar sweep */}
+          <div style={{
+            position: 'absolute',
+            width: '100%',
+            height: '100%',
+            borderRadius: '50%',
+            borderTop: '2px solid var(--brand-orange)',
+            borderRight: '2px solid transparent',
+            borderBottom: '2px solid transparent',
+            borderLeft: '2px solid transparent',
+            animation: 'radar-sweep 1.4s linear infinite'
+          }} />
+
+          {/* Centered Flash Logo */}
+          <div style={{
+            width: 54,
+            height: 54,
+            borderRadius: '50%',
+            backgroundColor: 'rgba(255, 107, 0, 0.12)',
+            border: '1px solid var(--brand-orange)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
           }}>
-            <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg width="24" height="24" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M17 5L10 14.5H16L15 25L22 15.5H16L17 5Z" fill="var(--brand-orange)"/>
             </svg>
           </div>
         </div>
 
+        {/* Title and percentage */}
         <div>
-          <h2 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>Analyzing Site Resilience</h2>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Fetching climate data from FortyGuard APIs...</p>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: '#fff', marginBottom: 8, letterSpacing: '-0.02em' }}>
+            Analyzing Thermal Resilience
+          </h2>
+          <div style={{
+            fontSize: 28,
+            fontWeight: 900,
+            color: 'var(--brand-orange)',
+            fontFamily: "'JetBrains Mono', monospace"
+          }}>
+            {progress}% COMPLETE
+          </div>
         </div>
 
-        {/* Process Checklist Modal Panel */}
+        {/* Progress bar */}
         <div style={{
-          backgroundColor: 'var(--bg-card)',
-          border: '1px solid var(--bg-border)',
-          borderRadius: 12,
-          padding: 24,
+          width: '100%',
+          height: 6,
+          backgroundColor: '#1E242B',
+          borderRadius: 4,
+          overflow: 'hidden'
+        }}>
+          <div style={{
+            height: '100%',
+            width: `${progress}%`,
+            backgroundColor: 'var(--brand-orange)',
+            boxShadow: '0 0 12px var(--brand-orange)',
+            transition: 'width 0.1s linear'
+          }} />
+        </div>
+
+        {/* Status Checklist matching Screen 7 Mockup */}
+        <div style={{
           width: '100%',
           display: 'flex',
           flexDirection: 'column',
-          gap: 16,
+          gap: 12,
           textAlign: 'left'
         }}>
-          {/* Step 1 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, opacity: step >= 1 ? 1 : 0.4 }}>
-            {step > 1 ? (
-              <CheckCircle2 size={18} color="var(--status-optimal)" />
-            ) : (
-              <div style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid var(--brand-orange)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: 'var(--brand-orange)' }}></span>
-              </div>
-            )}
-            <span style={{ fontSize: 13.5, fontWeight: 600 }}>Satellite View Segmented</span>
-          </div>
+          {tasks.map(t => {
+            const isDone = step > t.id || progress === 100;
+            const isCurrent = step === t.id && progress < 100;
 
-          {/* Step 2 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, opacity: step >= 2 ? 1 : 0.4 }}>
-            {step > 2 ? (
-              <CheckCircle2 size={18} color="var(--status-optimal)" />
-            ) : (
-              <div style={{ width: 18, height: 18, borderRadius: '50%', border: step === 2 ? '2px solid var(--brand-orange)' : '2px solid var(--text-dark)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {step === 2 && <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: 'var(--brand-orange)' }}></span>}
-              </div>
-            )}
-            <span style={{ fontSize: 13.5, fontWeight: 600 }}>Urban Heat Data Collected</span>
-          </div>
+            return (
+              <div
+                key={t.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  padding: '10px 14px',
+                  borderRadius: 8,
+                  backgroundColor: isCurrent ? 'rgba(255, 107, 0, 0.08)' : (isDone ? 'rgba(16, 185, 129, 0.05)' : 'rgba(255, 255, 255, 0.02)'),
+                  border: isCurrent ? '1px solid var(--brand-orange)' : (isDone ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid var(--bg-border)'),
+                  transition: 'all 0.3s'
+                }}
+              >
+                {isDone ? (
+                  <CheckCircle2 size={16} color="var(--status-optimal)" />
+                ) : isCurrent ? (
+                  <Loader2 size={16} color="var(--brand-orange)" style={{ animation: 'spin 1.5s linear infinite' }} />
+                ) : (
+                  <Circle size={16} color="#475569" />
+                )}
 
-          {/* Step 3 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, opacity: step >= 3 ? 1 : 0.4 }}>
-            {step > 3 ? (
-              <CheckCircle2 size={18} color="var(--status-optimal)" />
-            ) : (
-              <div style={{ width: 18, height: 18, borderRadius: '50%', border: step === 3 ? '2px solid var(--brand-orange)' : '2px solid var(--text-dark)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {step === 3 && <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: 'var(--brand-orange)' }}></span>}
+                <span style={{
+                  fontSize: 12,
+                  fontWeight: isCurrent ? 700 : 500,
+                  color: isDone ? '#FFFFFF' : (isCurrent ? 'var(--brand-orange)' : 'var(--text-muted)')
+                }}>
+                  {t.label}
+                </span>
               </div>
-            )}
-            <span style={{ fontSize: 13.5, fontWeight: 600 }}>Calculating TSS Score...</span>
-          </div>
-
-          {/* Step 4 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, opacity: step >= 4 ? 1 : 0.4 }}>
-            {step > 4 ? (
-              <CheckCircle2 size={18} color="var(--status-optimal)" />
-            ) : (
-              <div style={{ width: 18, height: 18, borderRadius: '50%', border: step === 4 ? '2px solid var(--brand-orange)' : '2px solid var(--text-dark)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {step === 4 && <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: 'var(--brand-orange)' }}></span>}
-              </div>
-            )}
-            <span style={{ fontSize: 13.5, fontWeight: 600 }}>Generating AI Insights</span>
-          </div>
-        </div>
-
-        <div className="mono" style={{ fontSize: 13, fontWeight: 700, color: 'var(--brand-orange)', letterSpacing: '0.05em' }}>
-          {progress}% COMPLETE
+            );
+          })}
         </div>
       </div>
-
-      {/* Basic Keyframe Spinner Injection styles */}
-      <style>{`
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 }

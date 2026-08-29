@@ -78,7 +78,7 @@ export default function App() {
         path="/loader"
         element={
           user ? (
-            <Loader />
+            <Loader onAddSite={handleAddSite} />
           ) : (
             <Navigate to="/" replace />
           )

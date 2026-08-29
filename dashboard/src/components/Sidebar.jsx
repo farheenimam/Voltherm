@@ -89,7 +89,7 @@ export default function Sidebar({ user, onLogout, firstSiteId }) {
             })}
           >
             <Folder size={18} />
-            Siting Planners
+            Siting Portfolio
           </NavLink>
 
           <NavLink
