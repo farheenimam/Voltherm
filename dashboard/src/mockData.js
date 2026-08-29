@@ -140,15 +140,18 @@ export function simulateMitigations(site, mitigations) {
     if (mit.type === "Solar Canopy") {
       reductionMultiplier *= 0.45; // 55% reduction
     } else if (mit.type === "Cool Reflective Paint") {
-      reductionMultiplier *= 0.75; // 25% reduction
+      reductionMultiplier *= 0.72; // 28% reduction
     } else if (mit.type === "Live Tree Wall") {
       reductionMultiplier *= 0.85; // 15% reduction
+    } else if (mit.type === "Liquid-Cooled Cable Retrofit") {
+      reductionMultiplier *= 0.80; // 20% reduction
     }
   });
 
   const simulatedTss = Math.min(100, Math.max(0, Math.round(100 - ((100 - originalTss) * reductionMultiplier))));
   const simulatedLoss = Math.round(originalLoss * reductionMultiplier);
   const annualSavings = Math.round(originalLoss - simulatedLoss);
+  const deratingHoursAfter = Math.round(site.metrics.annual_derating_hours * reductionMultiplier);
   
   const impactPct = Math.round((1.0 - reductionMultiplier) * 100);
 
@@ -156,6 +159,7 @@ export function simulateMitigations(site, mitigations) {
     tss_after: simulatedTss,
     annual_revenue_loss_after_usd: simulatedLoss,
     annual_savings_usd: annualSavings,
+    derating_hours_after: deratingHoursAfter,
     impact_pct: impactPct
   };
 }

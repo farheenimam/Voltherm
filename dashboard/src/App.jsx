@@ -85,6 +85,10 @@ export default function App() {
         }
       />
       <Route
+        path="/sandbox"
+        element={<Navigate to={sites[0] ? `/sandbox/${sites[0].site_id}` : '/portfolio'} replace />}
+      />
+      <Route
         path="/sandbox/:id"
         element={
           user ? (
@@ -93,6 +97,10 @@ export default function App() {
             <Navigate to="/" replace />
           )
         }
+      />
+      <Route
+        path="/editor"
+        element={<Navigate to={sites[0] ? `/editor/${sites[0].site_id}` : '/portfolio'} replace />}
       />
       <Route
         path="/editor/:id"

@@ -163,9 +163,36 @@ export default function Sandbox({ sites, user, onLogout }) {
           borderBottom: '1px solid var(--bg-border)',
           paddingBottom: 20
         }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <h2 style={{ fontSize: 24, fontWeight: 800, color: '#fff' }}>Thermal Siting Analysis</h2>
+              
+              {/* Site selector dropdown */}
+              <div style={{ position: 'relative' }}>
+                <select
+                  value={site.site_id}
+                  onChange={e => navigate(`/sandbox/${e.target.value}`)}
+                  style={{
+                    backgroundColor: 'var(--bg-card)',
+                    color: '#fff',
+                    border: '1px solid var(--bg-border)',
+                    borderRadius: 8,
+                    padding: '6px 28px 6px 12px',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    outline: 'none',
+                    appearance: 'none'
+                  }}
+                >
+                  {sites.map(s => (
+                    <option key={s.site_id} value={s.site_id}>
+                      {s.site_name} (TSS {s.metrics.thermal_siting_score})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <span style={{
                 backgroundColor: 'rgba(255, 255, 255, 0.05)',
                 border: '1px solid var(--bg-border)',
@@ -179,7 +206,7 @@ export default function Sandbox({ sites, user, onLogout }) {
               </span>
             </div>
             <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-              {site.site_name} &bull; {site.location}
+              {site.site_name} &bull; {site.location} &bull; <span style={{ fontFamily: 'monospace' }}>[{site.latitude.toFixed(4)}°N, {Math.abs(site.longitude).toFixed(4)}°W]</span>
             </span>
           </div>
 
