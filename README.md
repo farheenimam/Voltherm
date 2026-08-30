@@ -82,7 +82,7 @@ VoltShield/
 VoltShield integrates directly with the live FortyGuard API across 5 key endpoints:
 
 <p align="center">
-  <img src="fortyguard-pipeline.gif" alt="FortyGuard API Integration Pipeline" width="600">
+  <img src="pipeline.gif" alt="FortyGuard API Integration Pipeline" width="600">
 </p>
 
 | Analytical Endpoint | Agent | Purpose & Payload | Extracted Metrics |
