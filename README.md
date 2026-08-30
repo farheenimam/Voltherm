@@ -1,7 +1,7 @@
 # 🛡️ VoltShield — Climate-Resilient EV Siting Copilot
 
 **Official Submission for the FortyGuard Urban Heat Hackathon 2026**
-
+![Alt Text](image.png)
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-voltshield--sw7k.onrender.com-FF6B00.svg)](https://voltshield-sw7k.onrender.com)
 [![FortyGuard API](https://img.shields.io/badge/FortyGuard-10m%20Heat%20Intel-FF6B00.svg)](https://api.fortyguard.com)
 [![Groq LLM](https://img.shields.io/badge/Groq%20LLM-Llama--3.3--70B-orange.svg)](https://groq.com)
