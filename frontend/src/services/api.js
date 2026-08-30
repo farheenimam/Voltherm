@@ -1,7 +1,7 @@
 // VoltShield Frontend API Service Layer
 // Communicates with Node.js Express backend and SQLite database (voltherm.db)
 
-const API_BASE = '/api';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api';
 
 /**
  * Fetch all sites from SQLite with summary aggregates
