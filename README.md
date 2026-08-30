@@ -63,6 +63,10 @@ VoltShield/
 * **Manager Agent:** Synthesizes metrics, computes deterministic TSS, and drafts engineering recommendations via Groq LLM.
 * **Critique Agent:** Automated fact-checker running 4 validation tests (Numeric Consistency, Fact Grounding, Relevance, Completeness) with bounded revision loops.
 
+<p align="center">
+  <img src="multiagent-pipeline.gif" alt="Multiagent Pipeline" width="600">
+</p>
+
 ### 4. Interactive Mitigation Design Canvas
 * Live geospatial Leaflet canvas centered on the parking parcel.
 * Real-time toggles for **Bifacial Solar Canopies** and **High-Albedo Reflective Sealcoats**.
@@ -77,30 +81,9 @@ VoltShield/
 
 VoltShield integrates directly with the live FortyGuard API across 5 key endpoints:
 
-```
-                  ┌─────────────────────────────────────┐
-                  │       Candidate Site (Lat/Lng)      │
-                  └──────────────────┬──────────────────┘
-                                     │
-         ┌───────────────────────────┼───────────────────────────┐
-         ▼                           ▼                           ▼
-┌──────────────────┐       ┌──────────────────┐       ┌──────────────────┐
-│  Heat Exceedance │       │    Satellite     │       │  Environmental   │
-│  & Persistence   │       │   Segmentation   │       │    Irradiance    │
-│  /v1/heatmap     │       │ /v1/segmentation │       │ /v1/environmental│
-└────────┬─────────┘       └─────────┬────────┘       └─────────┬────────┘
-         │                           │                          │
-         └───────────────────────────┼──────────────────────────┘
-                                     ▼
-                   ┌──────────────────────────────────┐
-                   │    Async Polling via /v1/status  │
-                   │    Cache + Resilience Fallback   │
-                   └─────────────────┬────────────────┘
-                                     ▼
-                   ┌──────────────────────────────────┐
-                   │    TSS Siting Scorecard (0–100)  │
-                   └──────────────────────────────────┘
-```
+<p align="center">
+  <img src="fortyguard-pipeline.gif" alt="FortyGuard API Integration Pipeline" width="600">
+</p>
 
 | Analytical Endpoint | Agent | Purpose & Payload | Extracted Metrics |
 | :--- | :--- | :--- | :--- |
