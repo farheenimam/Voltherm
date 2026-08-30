@@ -64,7 +64,7 @@ VoltShield/
 * **Critique Agent:** Automated fact-checker running 4 validation tests (Numeric Consistency, Fact Grounding, Relevance, Completeness) with bounded revision loops.
 
 <p align="center">
-  <img src="multiagent-pipeline.gif" alt="Multiagent Pipeline" width="600">
+  <img src="multiagent-pipeline1.gif" alt="Multiagent Pipeline" width="600">
 </p>
 
 ### 4. Interactive Mitigation Design Canvas
@@ -82,7 +82,7 @@ VoltShield/
 VoltShield integrates directly with the live FortyGuard API across 5 key endpoints:
 
 <p align="center">
-  <img src="pipeline.gif" alt="FortyGuard API Integration Pipeline" width="600">
+  <img src="pipeline1.gif" alt="FortyGuard API Integration Pipeline" width="600">
 </p>
 
 | Analytical Endpoint | Agent | Purpose & Payload | Extracted Metrics |
