@@ -2,12 +2,15 @@
 
 **Official Submission for the FortyGuard Urban Heat Hackathon 2026**
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-voltshield--sw7k.onrender.com-FF6B00.svg)](https://voltshield-sw7k.onrender.com)
 [![FortyGuard API](https://img.shields.io/badge/FortyGuard-10m%20Heat%20Intel-FF6B00.svg)](https://api.fortyguard.com)
 [![Groq LLM](https://img.shields.io/badge/Groq%20LLM-Llama--3.3--70B-orange.svg)](https://groq.com)
 [![SQLite](https://img.shields.io/badge/Database-SQLite%20(WAL)-blue.svg)](https://sqlite.org)
 [![React 18](https://img.shields.io/badge/Frontend-React%2018%20%2B%20Vite-61DAFB.svg)](https://reactjs.org)
 [![Node.js](https://img.shields.io/badge/Backend-Node.js%20Express-green.svg)](https://nodejs.org)
 [![NEVI Compliant](https://img.shields.io/badge/NEVI-97%25%20Uptime%20SLA-10B981.svg)](https://www.fhwa.dot.gov/environment/alternative_fuel_corridors/resources/nevi_program/)
+
+🚀 **Live Web Application:** [https://voltshield-sw7k.onrender.com](https://voltshield-sw7k.onrender.com)
 
 > **Eliminate EV site heat risk before you break ground.** VoltShield pairs **FortyGuard 10-meter urban heat intelligence** with autonomous multi-agent AI to predict localized EV charger overheating, quantify curtailed revenue losses, and simulate physical mitigations (solar canopies, high-albedo sealcoats) that guarantee federal **NEVI 97% uptime compliance**.
 
@@ -165,8 +168,9 @@ npm run backend
 npm run frontend
 ```
 
-* **Live Web App:** Open [http://localhost:5173/](http://localhost:5173/)
-* **Backend API Health:** [http://localhost:4000/api/health](http://localhost:4000/api/health)
+* **Live Web App (Production):** [https://voltshield-sw7k.onrender.com](https://voltshield-sw7k.onrender.com)
+* **Backend API Health:** [https://voltshield-sw7k.onrender.com/api/health](https://voltshield-sw7k.onrender.com/api/health)
+* **Localhost Development:** [http://localhost:5173/](http://localhost:5173/) (Backend on `:4000`)
 
 ---
 
