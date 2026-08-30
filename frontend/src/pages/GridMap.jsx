@@ -26,10 +26,20 @@ export default function GridMap({ sites, user, onLogout }) {
       mapInstanceRef.current = null;
     }
 
-    // Initialize leaflet map centered on USA
+    // US Continental Boundary Bounds for FortyGuard LTM Coverage
+    const usBounds = L.latLngBounds(
+      [24.0, -125.0], // South-West (Key West / San Diego)
+      [49.5, -66.5]   // North-East (Maine / Washington state)
+    );
+
+    // Initialize leaflet map centered and locked strictly to US territory
     const map = L.map(mapRef.current, {
-      zoomControl: false
-    }).setView([38.5, -97.0], 4);
+      zoomControl: false,
+      minZoom: 4.5,
+      maxZoom: 16,
+      maxBounds: usBounds,
+      maxBoundsViscosity: 1.0 // Prevents panning outside US bounds
+    }).setView([38.8, -96.5], 5);
 
     mapInstanceRef.current = map;
 
@@ -86,7 +96,7 @@ export default function GridMap({ sites, user, onLogout }) {
             </div>
           </div>
 
-          <a href="#/sandbox/${site.site_id}" style="
+          <a href="/sandbox/${site.site_id}" style="
             display: block;
             text-align: center;
             background-color: #FF6B00;
@@ -166,7 +176,7 @@ export default function GridMap({ sites, user, onLogout }) {
             gap: 10
           }}>
             <Compass size={18} color="var(--brand-orange)" />
-            <span style={{ fontWeight: 800, fontSize: 14, color: '#FFFFFF' }}>Global Grid Map • Thermal Siting Feasibility</span>
+            <span style={{ fontWeight: 800, fontSize: 14, color: '#FFFFFF' }}>US Grid Map • FortyGuard 10m LTM Coverage</span>
           </div>
 
           {/* Layer switcher button */}
