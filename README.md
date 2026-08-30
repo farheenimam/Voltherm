@@ -1,7 +1,5 @@
 # 🛡️ VoltShield — Climate-Resilient EV Siting Copilot
 
-<h2>Dashboard</h2>
-
 <p align="center">
   <img src="image.png" alt="VoltShield Dashboard" width="850">
 </p>
